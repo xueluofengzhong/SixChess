@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+**/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+local.properties
+
+# Old reference projects
+GobangAndroid/
+Gobang_Android/
+gomoku-android/
+
+# Claude private config
+CLAUDE.md
+CLAUDE.original.md

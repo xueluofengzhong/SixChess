@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#DEB887"
+    android:gravity="center_horizontal">
+
+    <!-- Turn indicator -->
+    <TextView
+        android:id="@+id/tv_turn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:padding="8dp" />
+
+    <!-- Board -->
+    <com.sixchess.ui.BoardView
+        android:id="@+id/board_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Game status -->
+    <TextView
+        android:id="@+id/tv_game_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="准备中..."
+        android:textSize="16sp"
+        android:textColor="#CC0000"
+        android:padding="8dp" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btn_rematch"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="复赛"
+            android:enabled="false"
+            android:layout_marginEnd="16dp" />
+
+        <Button
+            android:id="@+id/btn_leave"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="离开"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
+
+</LinearLayout>
