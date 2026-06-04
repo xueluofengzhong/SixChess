@@ -6,7 +6,9 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -42,6 +44,17 @@ public class BoardView extends View {
     private Paint winLinePaint;
     private Paint starPaint;
     private int[][] stars;
+
+    // 3D gradient piece paints
+    private Paint blackGradientPaint;
+    private Paint whiteGradientPaint;
+    private Paint blackBorderPaint;
+    private Paint whiteBorderPaint;
+
+    // Last move tracking
+    private int lastMoveRow = -1;
+    private int lastMoveCol = -1;
+    private Paint lastMovePaint;
 
     private ChessType[][] board;
     private ChessType myColor;
@@ -135,6 +148,23 @@ public class BoardView extends View {
         winLinePaint.setStrokeWidth(6);
         winLinePaint.setAntiAlias(true);
 
+        // Last move indicator paint
+        lastMovePaint = new Paint();
+        lastMovePaint.setColor(0x88FF4444);
+        lastMovePaint.setStyle(Paint.Style.FILL);
+        lastMovePaint.setAntiAlias(true);
+
+        // Pre-create border paints
+        blackBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        blackBorderPaint.setColor(0xFF000000);
+        blackBorderPaint.setStyle(Paint.Style.STROKE);
+        blackBorderPaint.setStrokeWidth(2);
+
+        whiteBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        whiteBorderPaint.setColor(0xFF888888);
+        whiteBorderPaint.setStyle(Paint.Style.STROKE);
+        whiteBorderPaint.setStrokeWidth(2);
+
         // Try to load piece bitmaps, fall back to drawing circles
         try {
             blackPiece = BitmapFactory.decodeResource(getResources(), R.drawable.black_piece);
@@ -162,6 +192,23 @@ public class BoardView extends View {
         offsetY = cellSize;
         pieceSize = (int) (cellSize * PIECE_RATIO / 2);
 
+        // Create radial gradient shaders for 3D piece effect
+        blackGradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        blackGradientPaint.setStyle(Paint.Style.FILL);
+        blackGradientPaint.setShader(new RadialGradient(
+                0, 0, pieceSize,
+                new int[]{0xFF666666, 0xFF333333, 0xFF111111},
+                new float[]{0.0f, 0.5f, 1.0f},
+                Shader.TileMode.CLAMP));
+
+        whiteGradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        whiteGradientPaint.setStyle(Paint.Style.FILL);
+        whiteGradientPaint.setShader(new RadialGradient(
+                0, 0, pieceSize,
+                new int[]{0xFFFFFFFF, 0xFFEEEEEE, 0xFFCCCCCC},
+                new float[]{0.0f, 0.5f, 1.0f},
+                Shader.TileMode.CLAMP));
+
         // Scale bitmaps
         if (blackPiece != null) {
             int size = (int) (cellSize * PIECE_RATIO);
@@ -175,6 +222,9 @@ public class BoardView extends View {
         drawBackground(canvas);
         drawGrid(canvas);
         drawPieces(canvas);
+        if (lastMoveRow >= 0 && lastMoveCol >= 0 && board[lastMoveRow][lastMoveCol] != ChessType.NONE) {
+            drawLastMoveIndicator(canvas);
+        }
         if (!winPositions.isEmpty()) {
             drawWinHighlight(canvas);
         }
@@ -216,55 +266,59 @@ public class BoardView extends View {
                     if (blackPiece != null) {
                         canvas.drawBitmap(blackPiece, cx - blackPiece.getWidth() / 2f,
                                 cy - blackPiece.getHeight() / 2f, null);
+                    } else if (blackGradientPaint != null) {
+                        // 3D gradient piece
+                        canvas.save();
+                        canvas.translate(cx, cy);
+                        canvas.drawCircle(0, 0, pieceSize, blackGradientPaint);
+                        canvas.drawCircle(0, 0, pieceSize, blackBorderPaint);
+                        canvas.restore();
                     } else {
-                        // Draw circle
+                        // Fallback flat piece
                         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                         p.setColor(0xFF333333);
                         p.setStyle(Paint.Style.FILL);
                         canvas.drawCircle(cx, cy, pieceSize, p);
-                        p.setColor(0xFF000000);
-                        p.setStyle(Paint.Style.STROKE);
-                        p.setStrokeWidth(2);
-                        canvas.drawCircle(cx, cy, pieceSize, p);
+                        canvas.drawCircle(cx, cy, pieceSize, blackBorderPaint);
                     }
                 } else {
                     if (whitePiece != null) {
                         canvas.drawBitmap(whitePiece, cx - whitePiece.getWidth() / 2f,
                                 cy - whitePiece.getHeight() / 2f, null);
+                    } else if (whiteGradientPaint != null) {
+                        // 3D gradient piece
+                        canvas.save();
+                        canvas.translate(cx, cy);
+                        canvas.drawCircle(0, 0, pieceSize, whiteGradientPaint);
+                        canvas.drawCircle(0, 0, pieceSize, whiteBorderPaint);
+                        canvas.restore();
                     } else {
-                        // Draw circle
+                        // Fallback flat piece
                         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                         p.setColor(0xFFEEEEEE);
                         p.setStyle(Paint.Style.FILL);
                         canvas.drawCircle(cx, cy, pieceSize, p);
-                        p.setColor(0xFF666666);
-                        p.setStyle(Paint.Style.STROKE);
-                        p.setStrokeWidth(2);
-                        canvas.drawCircle(cx, cy, pieceSize, p);
+                        canvas.drawCircle(cx, cy, pieceSize, whiteBorderPaint);
                     }
                 }
             }
         }
     }
 
+    private void drawLastMoveIndicator(Canvas canvas) {
+        float cx = offsetX + lastMoveCol * cellSize;
+        float cy = offsetY + lastMoveRow * cellSize;
+        canvas.drawCircle(cx, cy, pieceSize * 0.35f, lastMovePaint);
+    }
+
     private void drawWinHighlight(Canvas canvas) {
         if (winPositions.size() < 2) return;
-        Point first = winPositions.get(0);
-        Point last = winPositions.get(winPositions.size() - 1);
-        float x1 = offsetX + first.col * cellSize;
-        float y1 = offsetY + first.row * cellSize;
-        float x2 = offsetX + last.col * cellSize;
-        float y2 = offsetY + last.row * cellSize;
 
         // Draw highlight circles on winning positions
-        Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
-        highlight.setColor(0x66FF0000);
-        highlight.setStyle(Paint.Style.FILL);
-
         for (Point p : winPositions) {
             float cx = offsetX + p.col * cellSize;
             float cy = offsetY + p.row * cellSize;
-            canvas.drawCircle(cx, cy, pieceSize + 4, highlight);
+            canvas.drawCircle(cx, cy, pieceSize + 4, highlightPaint);
         }
     }
 
@@ -314,6 +368,18 @@ public class BoardView extends View {
     public void placePiece(int row, int col, ChessType color) {
         if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
         board[row][col] = color;
+        lastMoveRow = row;
+        lastMoveCol = col;
+        invalidate();
+    }
+
+    public void removePiece(int row, int col) {
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+        board[row][col] = ChessType.NONE;
+        if (lastMoveRow == row && lastMoveCol == col) {
+            lastMoveRow = -1;
+            lastMoveCol = -1;
+        }
         invalidate();
     }
 
@@ -329,6 +395,8 @@ public class BoardView extends View {
             }
         }
         winPositions.clear();
+        lastMoveRow = -1;
+        lastMoveCol = -1;
         gameActive = false;
         isMyTurn = false;
         invalidate();

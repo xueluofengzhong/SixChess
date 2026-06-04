@@ -1,5 +1,6 @@
 package com.sixchess.server;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -15,6 +16,8 @@ public class GameSession {
     private int moveCount;
     private boolean gameOver;
     private String winner; // "BLACK", "WHITE", or "DRAW"
+    private final ArrayList<MoveRecord> moveHistory = new ArrayList<>();
+    private Point lastMove;
 
     public GameSession() {
         board = new ChessType[BOARD_SIZE][BOARD_SIZE];
@@ -43,6 +46,8 @@ public class GameSession {
         moveCount = 0;
         gameOver = false;
         winner = null;
+        moveHistory.clear();
+        lastMove = null;
     }
 
     /**
@@ -68,11 +73,19 @@ public class GameSession {
         board[row][col] = color;
         moveCount++;
 
+        // Record move for undo
+        ChessType previousTurn = currentTurn;
+        moveHistory.add(new MoveRecord(row, col, color, previousTurn, false, null));
+        lastMove = new Point(row, col);
+
         // Check for win
         List<Point> winPositions = WinDetector.checkWin(board, row, col);
         if (winPositions != null) {
             gameOver = true;
             winner = color.toProtocolString();
+            // Update the record with game-over state
+            moveHistory.get(moveHistory.size() - 1).wasGameOver = true;
+            moveHistory.get(moveHistory.size() - 1).previousWinner = null;
             return PlaceResult.win(color.toProtocolString(), winPositions, moveCount);
         }
 
@@ -80,6 +93,8 @@ public class GameSession {
         if (WinDetector.isDraw(board)) {
             gameOver = true;
             winner = "DRAW";
+            moveHistory.get(moveHistory.size() - 1).wasGameOver = true;
+            moveHistory.get(moveHistory.size() - 1).previousWinner = null;
             return PlaceResult.draw(moveCount);
         }
 
@@ -93,6 +108,51 @@ public class GameSession {
     public boolean isGameOver() { return gameOver; }
     public String getWinner() { return winner; }
     public ChessType[][] getBoard() { return board; }
+    public Point getLastMove() { return lastMove; }
+
+    /**
+     * Undo the last move. Returns the move record, or null if no moves.
+     */
+    public MoveRecord undoLastMove() {
+        if (moveHistory.isEmpty()) return null;
+        MoveRecord record = moveHistory.remove(moveHistory.size() - 1);
+        board[record.row][record.col] = ChessType.NONE;
+        moveCount--;
+        // Restore turn to the player who made the undone move
+        currentTurn = record.color;
+        gameOver = record.wasGameOver;
+        winner = record.previousWinner;
+        // Update lastMove to previous move, or null
+        if (!moveHistory.isEmpty()) {
+            MoveRecord prev = moveHistory.get(moveHistory.size() - 1);
+            lastMove = new Point(prev.row, prev.col);
+        } else {
+            lastMove = null;
+        }
+        return record;
+    }
+
+    /**
+     * A record of a single move for undo support.
+     */
+    public static class MoveRecord {
+        public final int row;
+        public final int col;
+        public final ChessType color;
+        public final ChessType previousTurn;
+        public boolean wasGameOver;
+        public String previousWinner;
+
+        public MoveRecord(int row, int col, ChessType color, ChessType previousTurn,
+                          boolean wasGameOver, String previousWinner) {
+            this.row = row;
+            this.col = col;
+            this.color = color;
+            this.previousTurn = previousTurn;
+            this.wasGameOver = wasGameOver;
+            this.previousWinner = previousWinner;
+        }
+    }
 
     /**
      * Result of a placePiece attempt.

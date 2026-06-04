@@ -84,6 +84,9 @@ public class GameServer extends WebSocketServer {
             case Message.LEAVE_ROOM -> handleLeaveRoom(conn);
             case Message.REMATCH -> handleRematch(conn);
             case Message.PONG -> { /* heartbeat response, nothing to do */ }
+            case Message.UNDO_REQUEST -> handleUndoRequest(conn);
+            case Message.UNDO_RESPONSE -> handleUndoResponse(conn, msg);
+            case Message.BEG -> handleBeg(conn);
             default -> conn.send(Message.error(Message.ERR_UNKNOWN_TYPE, "Unknown message type: " + msg.type).toJson());
         }
     }
@@ -212,6 +215,57 @@ public class GameServer extends WebSocketServer {
                 other.send(Message.rematchRequest(playerName != null ? playerName : "Opponent").toJson());
             }
         }
+    }
+
+    private void handleUndoRequest(WebSocket conn) {
+        Room room = roomManager.getRoomBySession(conn);
+        if (room == null) {
+            conn.send(Message.error(Message.ERR_GAME_NOT_ACTIVE, "You are not in a room").toJson());
+            return;
+        }
+
+        WebSocket other = room.requestUndo(conn);
+        if (other == null) {
+            conn.send(Message.error(Message.ERR_GAME_NOT_ACTIVE, "Cannot request undo now").toJson());
+            return;
+        }
+
+        String playerName = room.getPlayerName(conn);
+        if (other.isOpen()) {
+            other.send(Message.undoRequest(playerName != null ? playerName : "对手").toJson());
+        }
+    }
+
+    private void handleUndoResponse(WebSocket conn, Message msg) {
+        Room room = roomManager.getRoomBySession(conn);
+        if (room == null) {
+            conn.send(Message.error(Message.ERR_GAME_NOT_ACTIVE, "You are not in a room").toJson());
+            return;
+        }
+
+        // Capture requester before apply clears it
+        WebSocket requester = room.getUndoRequester();
+        boolean accept = msg.data.has("accept") && msg.data.get("accept").getAsBoolean();
+        GameSession.MoveRecord record = room.applyUndoResponse(accept, conn);
+
+        if (accept && record != null) {
+            String nextTurn = record.color.toProtocolString();
+            int moveNumber = room.getGame().getMoveCount();
+            broadcastToRoom(room, Message.undoApplied(record.row, record.col, nextTurn, moveNumber));
+            log.info("Room {}: undo applied, removed ({},{})", room.getCode(), record.row, record.col);
+        } else if (!accept && requester != null && requester.isOpen()) {
+            requester.send(Message.undoDeclined().toJson());
+        }
+    }
+
+    private void handleBeg(WebSocket conn) {
+        Room room = roomManager.getRoomBySession(conn);
+        if (room == null) {
+            conn.send(Message.error(Message.ERR_GAME_NOT_ACTIVE, "You are not in a room").toJson());
+            return;
+        }
+        broadcastToRoom(room, Message.beg());
+        log.info("Room {}: {} begs for mercy", room.getCode(), room.getPlayerName(conn));
     }
 
     private void handlePlayerDisconnect(WebSocket conn) {

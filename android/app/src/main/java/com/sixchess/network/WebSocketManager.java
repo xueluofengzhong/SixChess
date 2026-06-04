@@ -207,6 +207,20 @@ public class WebSocketManager {
         send(Message.PONG, new JsonObject());
     }
 
+    public void requestUndo() {
+        send(Message.UNDO_REQUEST, new JsonObject());
+    }
+
+    public void respondUndo(boolean accept) {
+        JsonObject data = new JsonObject();
+        data.addProperty("accept", accept);
+        send(Message.UNDO_RESPONSE, data);
+    }
+
+    public void sendBeg() {
+        send(Message.BEG, new JsonObject());
+    }
+
     public void disconnect() {
         if (webSocket != null) {
             webSocket.close(1000, "User left");

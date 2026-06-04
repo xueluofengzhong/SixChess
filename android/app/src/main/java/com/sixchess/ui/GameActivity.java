@@ -1,15 +1,19 @@
 package com.sixchess.ui;
 
 import android.app.AlertDialog;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.sixchess.R;
@@ -20,17 +24,39 @@ import com.sixchess.network.WebSocketManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Main game screen. Hosts the BoardView and handles game state.
  */
 public class GameActivity extends AppCompatActivity implements WebSocketManager.MessageListener, BoardView.BoardListener {
 
+    private static final String[] DANMAKU_MESSAGES = {
+        "求求你让让我吧🥺",
+        "大佬带带我🙏",
+        "我错了下次不敢了",
+        "手下留情啊❤️",
+        "别打了别打了",
+        "再这样我要哭了😭",
+        "让我赢一把吧求求了",
+        "你太强了我瑟瑟发抖",
+        "饶命啊大佬",
+        "给条活路吧😅",
+        "我太难了😫",
+        "放点水吧求求了",
+        "大佬您悠着点",
+        "我已经很努力了…",
+        "你忍心赢我吗🥺"
+    };
+
     private BoardView boardView;
     private TextView turnText;
     private TextView statusText;
+    private Button undoBtn;
+    private Button begBtn;
     private Button rematchBtn;
     private Button leaveBtn;
+    private FrameLayout danmakuContainer;
 
     private WebSocketManager ws;
     private ChessType myColor;
@@ -38,6 +64,8 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
     private boolean rematchRequested;
     private boolean destroyed;
     private boolean leaving;
+    private boolean undoRequested;
+    private final Random danmakuRandom = new Random();
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -49,8 +77,11 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
         boardView = findViewById(R.id.board_view);
         turnText = findViewById(R.id.tv_turn);
         statusText = findViewById(R.id.tv_game_status);
+        undoBtn = findViewById(R.id.btn_undo);
+        begBtn = findViewById(R.id.btn_beg);
         rematchBtn = findViewById(R.id.btn_rematch);
         leaveBtn = findViewById(R.id.btn_leave);
+        danmakuContainer = findViewById(R.id.danmaku_overlay);
 
         // Get my color from intent
         String colorStr = getIntent().getStringExtra("myColor");
@@ -70,6 +101,17 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
         turnText.setText(myColor == ChessType.BLACK ? "轮到你了 (黑棋)" : "等待对手 (白棋)");
 
         rematchRequested = false;
+        undoRequested = false;
+
+        undoBtn.setOnClickListener(v -> {
+            if (undoRequested) return;
+            undoRequested = true;
+            undoBtn.setEnabled(false);
+            ws.requestUndo();
+            statusText.setText("等待对手同意悔棋...");
+        });
+
+        begBtn.setOnClickListener(v -> ws.sendBeg());
 
         rematchBtn.setEnabled(false);
         rematchBtn.setOnClickListener(v -> {
@@ -148,6 +190,18 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
             case Message.REMATCH_DECLINED:
                 handleRematchDeclined();
                 break;
+            case Message.UNDO_REQUEST:
+                handleUndoRequest(msg);
+                break;
+            case Message.UNDO_APPLIED:
+                handleUndoApplied(msg);
+                break;
+            case Message.UNDO_DECLINED:
+                handleUndoDeclined();
+                break;
+            case Message.BEG:
+                handleBeg();
+                break;
             case Message.ERROR:
                 handleError(msg);
                 break;
@@ -162,6 +216,8 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
             gameActive = true;
             boardView.setGameActive(true);
             boardView.setMyTurn(myColor == ChessType.BLACK);
+            undoBtn.setEnabled(true);
+            begBtn.setEnabled(true);
             statusText.setText("游戏开始！");
             turnText.setText(myColor == ChessType.BLACK ? "轮到你了 (黑棋)" : "等待对手 (白棋)");
         });
@@ -212,6 +268,8 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
             gameActive = false;
             boardView.setGameActive(false);
             boardView.setWinPositions(winPositions);
+            undoBtn.setEnabled(true); // allow undo even after game over
+            begBtn.setEnabled(false);
 
             String message;
             if ("DRAW".equals(winner)) {
@@ -237,7 +295,7 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
             boardView.setGameActive(false);
             statusText.setText(message != null ? message : "对手已断开连接");
             rematchBtn.setEnabled(false);
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                 .setTitle("游戏结束")
                 .setMessage("对手已断开连接。")
                 .setPositiveButton("返回", (d, w) -> {
@@ -251,13 +309,11 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
 
     private void handleRematchRequest(Message msg) {
         postToUi(() -> {
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                 .setTitle("复赛请求")
                 .setMessage("对手想再来一局，是否同意？")
                 .setPositiveButton("同意", (d, w) -> ws.requestRematch())
                 .setNegativeButton("拒绝", (d, w) -> {
-                    // Server will handle decline - actually we need to send decline
-                    // For now, leave room
                     ws.leaveRoom();
                     ws.disconnect();
                     finish();
@@ -277,7 +333,10 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
             boardView.setMyTurn(myColor == ChessType.BLACK);
             gameActive = true;
             rematchRequested = false;
+            undoRequested = false;
             rematchBtn.setEnabled(false);
+            undoBtn.setEnabled(true);
+            begBtn.setEnabled(true);
             updateTurnDisplay();
             statusText.setText("复赛开始！");
             if (myColor == ChessType.BLACK) {
@@ -297,6 +356,98 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
         });
     }
 
+    private void handleUndoRequest(Message msg) {
+        String fromPlayer = msg.getDataString("fromPlayer");
+        postToUi(() -> {
+            new MaterialAlertDialogBuilder(this)
+                .setTitle("悔棋请求")
+                .setMessage((fromPlayer != null ? fromPlayer : "对手") + " 请求悔棋，是否同意？")
+                .setPositiveButton("同意", (d, w) -> {
+                    ws.respondUndo(true);
+                    statusText.setText("已同意悔棋");
+                })
+                .setNegativeButton("拒绝", (d, w) -> ws.respondUndo(false))
+                .setCancelable(false)
+                .show();
+        });
+    }
+
+    private void handleUndoApplied(Message msg) {
+        int row = msg.getDataInt("row");
+        int col = msg.getDataInt("col");
+        String nextTurn = msg.getDataString("nextTurn");
+
+        postToUi(() -> {
+            boardView.removePiece(row, col);
+            boardView.setWinPositions(new ArrayList<>());
+            boardView.setGameActive(true);
+            gameActive = true;
+            undoRequested = false;
+            undoBtn.setEnabled(true);
+
+            boolean isMyTurn = nextTurn != null && nextTurn.equals(myColor.toProtocol());
+            boardView.setMyTurn(isMyTurn);
+
+            statusText.setText("悔棋成功！");
+            if (isMyTurn) {
+                turnText.setText("轮到你了！");
+            } else {
+                turnText.setText("等待对手...");
+            }
+        });
+    }
+
+    private void handleUndoDeclined() {
+        postToUi(() -> {
+            undoRequested = false;
+            undoBtn.setEnabled(gameActive);
+            statusText.setText("对手拒绝了悔棋请求");
+            Toast.makeText(this, "对手拒绝了悔棋请求", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void handleBeg() {
+        postToUi(this::spawnDanmaku);
+    }
+
+    private void spawnDanmaku() {
+        if (danmakuContainer == null || danmakuContainer.getWidth() <= 0) return;
+
+        int containerWidth = danmakuContainer.getWidth();
+        int containerHeight = danmakuContainer.getHeight();
+        int count = 8 + danmakuRandom.nextInt(5); // 8-12
+
+        for (int i = 0; i < count; i++) {
+            TextView tv = new TextView(this);
+            String text = DANMAKU_MESSAGES[danmakuRandom.nextInt(DANMAKU_MESSAGES.length)];
+            tv.setText(text);
+            tv.setTextSize(14 + danmakuRandom.nextFloat() * 8); // 14-22sp
+            tv.setTextColor(Color.WHITE);
+            tv.setShadowLayer(3, 1, 1, Color.BLACK);
+
+            float y = 50 + danmakuRandom.nextFloat() * (containerHeight - 100);
+            tv.setTranslationY(y);
+            tv.setTranslationX(containerWidth + danmakuRandom.nextFloat() * 300);
+
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT);
+            danmakuContainer.addView(tv, params);
+
+            float endX = -400 - danmakuRandom.nextFloat() * 200;
+            long duration = 3000 + danmakuRandom.nextInt(4000); // 3-7s
+            long delay = i * 150; // stagger
+
+            tv.animate()
+                .translationX(endX)
+                .setDuration(duration)
+                .setStartDelay(delay)
+                .setInterpolator(new LinearInterpolator())
+                .withEndAction(() -> danmakuContainer.removeView(tv))
+                .start();
+        }
+    }
+
     private void handleError(Message msg) {
         String errMsg = msg.getDataString("message");
         postToUi(() -> {
@@ -313,7 +464,7 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
 
     @Override
     public void onBackPressed() {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
             .setTitle("退出游戏")
             .setMessage("确定要退出游戏吗？")
             .setPositiveButton("退出", (d, w) -> {
@@ -338,6 +489,9 @@ public class GameActivity extends AppCompatActivity implements WebSocketManager.
         super.onDestroy();
         destroyed = true;
         handler.removeCallbacksAndMessages(null);
+        if (danmakuContainer != null) {
+            danmakuContainer.removeAllViews();
+        }
         ws.setListener(null);
     }
 }

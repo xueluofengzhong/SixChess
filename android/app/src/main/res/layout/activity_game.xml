@@ -1,61 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#DEB887"
-    android:gravity="center_horizontal">
+    android:background="?attr/colorSurface">
 
-    <!-- Turn indicator -->
-    <TextView
-        android:id="@+id/tv_turn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#333333"
-        android:padding="8dp" />
-
-    <!-- Board -->
-    <com.sixchess.ui.BoardView
-        android:id="@+id/board_view"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <!-- Game status -->
-    <TextView
-        android:id="@+id/tv_game_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="准备中..."
-        android:textSize="16sp"
-        android:textColor="#CC0000"
-        android:padding="8dp" />
-
-    <!-- Buttons -->
+    <!-- Main content -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="8dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
 
-        <Button
-            android:id="@+id/btn_rematch"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="复赛"
-            android:enabled="false"
-            android:layout_marginEnd="16dp" />
+        <!-- Status bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:background="?attr/colorPrimaryContainer">
 
-        <Button
-            android:id="@+id/btn_leave"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="离开"
-            android:layout_marginStart="16dp" />
+            <TextView
+                android:id="@+id/tv_turn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=""
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnPrimaryContainer" />
+
+            <TextView
+                android:id="@+id/tv_game_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="准备中..."
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnPrimaryContainer" />
+        </LinearLayout>
+
+        <!-- Board -->
+        <com.sixchess.ui.BoardView
+            android:id="@+id/board_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Button grid: 2 rows x 2 columns -->
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:rowCount="2"
+            android:padding="8dp"
+            android:useDefaultMargins="true"
+            android:alignmentMode="alignBounds">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_undo"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:text="悔棋"
+                android:enabled="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_beg"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:text="求饶"
+                android:enabled="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_rematch"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:text="复赛"
+                android:enabled="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_leave"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:text="离开" />
+        </GridLayout>
+
     </LinearLayout>
 
-</LinearLayout>
+    <!-- Danmaku overlay (click-through) -->
+    <FrameLayout
+        android:id="@+id/danmaku_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false" />
+
+</FrameLayout>

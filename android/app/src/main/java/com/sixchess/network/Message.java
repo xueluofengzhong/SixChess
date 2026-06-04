@@ -15,6 +15,9 @@ public class Message {
     public static final String LEAVE_ROOM = "leave_room";
     public static final String REMATCH = "rematch";
     public static final String PONG = "pong";
+    public static final String UNDO_REQUEST = "undo_request";
+    public static final String UNDO_RESPONSE = "undo_response";
+    public static final String BEG = "beg";
 
     // Server -> Client
     public static final String ROOM_CREATED = "room_created";
@@ -29,6 +32,8 @@ public class Message {
     public static final String REMATCH_READY = "rematch_ready";
     public static final String REMATCH_DECLINED = "rematch_declined";
     public static final String PING = "ping";
+    public static final String UNDO_APPLIED = "undo_applied";
+    public static final String UNDO_DECLINED = "undo_declined";
 
     public final String type;
     public final JsonObject data;

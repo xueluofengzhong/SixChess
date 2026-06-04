@@ -17,6 +17,9 @@ public class Message {
     public static final String LEAVE_ROOM = "leave_room";
     public static final String REMATCH = "rematch";
     public static final String PONG = "pong";
+    public static final String UNDO_REQUEST = "undo_request";
+    public static final String UNDO_RESPONSE = "undo_response";
+    public static final String BEG = "beg";
 
     // Server -> Client types
     public static final String ROOM_CREATED = "room_created";
@@ -31,6 +34,8 @@ public class Message {
     public static final String REMATCH_READY = "rematch_ready";
     public static final String REMATCH_DECLINED = "rematch_declined";
     public static final String PING = "ping";
+    public static final String UNDO_APPLIED = "undo_applied";
+    public static final String UNDO_DECLINED = "undo_declined";
 
     // Error codes
     public static final String ERR_ROOM_NOT_FOUND = "ROOM_NOT_FOUND";
@@ -158,6 +163,29 @@ public class Message {
 
     public static Message ping() {
         return new Message(PING, new JsonObject());
+    }
+
+    public static Message undoRequest(String fromPlayer) {
+        JsonObject d = new JsonObject();
+        d.addProperty("fromPlayer", fromPlayer);
+        return new Message(UNDO_REQUEST, d);
+    }
+
+    public static Message undoApplied(int row, int col, String nextTurn, int moveNumber) {
+        JsonObject d = new JsonObject();
+        d.addProperty("row", row);
+        d.addProperty("col", col);
+        d.addProperty("nextTurn", nextTurn);
+        d.addProperty("moveNumber", moveNumber);
+        return new Message(UNDO_APPLIED, d);
+    }
+
+    public static Message undoDeclined() {
+        return new Message(UNDO_DECLINED, new JsonObject());
+    }
+
+    public static Message beg() {
+        return new Message(BEG, new JsonObject());
     }
 
     // --- Accessors for incoming messages ---

@@ -34,6 +34,7 @@ public class Room {
     private boolean hostRematch;
     private boolean guestRematch;
     private long lastActivityTime;
+    private WebSocket pendingUndoFrom; // who requested undo, null if none pending
 
     private boolean swapColors; // Toggled on rematch to swap BLACK/WHITE
 
@@ -119,6 +120,44 @@ public class Room {
             guestRematch = true;
         }
         return hostRematch && guestRematch;
+    }
+
+    /**
+     * Request an undo. Returns the other player's socket to notify, or null if not allowed.
+     */
+    public synchronized WebSocket requestUndo(WebSocket socket) {
+        if (state != State.PLAYING && state != State.FINISHED) return null;
+        if (pendingUndoFrom != null) return null; // already pending
+        if (game == null || game.getMoveCount() == 0) return null; // no moves to undo
+        pendingUndoFrom = socket;
+        this.lastActivityTime = System.currentTimeMillis();
+        return getOther(socket);
+    }
+
+    /**
+     * Get the player who requested the current pending undo.
+     */
+    public synchronized WebSocket getUndoRequester() {
+        return pendingUndoFrom;
+    }
+
+    /**
+     * Process undo response. Returns the move record if accepted, null if declined or error.
+     */
+    public synchronized GameSession.MoveRecord applyUndoResponse(boolean accept, WebSocket socket) {
+        if (pendingUndoFrom == null) return null;
+        if (socket == pendingUndoFrom) return null; // requester can't respond
+        pendingUndoFrom = null;
+        if (!accept) return null;
+
+        GameSession.MoveRecord record = game.undoLastMove();
+        if (record != null) {
+            if (state == State.FINISHED) {
+                state = State.PLAYING;
+            }
+        }
+        this.lastActivityTime = System.currentTimeMillis();
+        return record;
     }
 
     /**

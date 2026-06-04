@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark warm wood palette -->
+    <color name="primary">#D4A574</color>
+    <color name="on_primary">#3E2B1A</color>
+    <color name="primary_container">#6B4B2E</color>
+    <color name="on_primary_container">#F5DEC0</color>
+    <color name="secondary">#A88258</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="secondary_container">#5A3E28</color>
+    <color name="on_secondary_container">#FFF0DC</color>
+    <color name="tertiary">#4CAF50</color>
+    <color name="on_tertiary">#FFFFFF</color>
+    <color name="error">#EF5350</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="surface">#1C1B1A</color>
+    <color name="on_surface">#E6E1E0</color>
+    <color name="surface_variant">#4E4438</color>
+    <color name="on_surface_variant">#D0C4B4</color>
+    <color name="outline">#9A8E82</color>
+    <color name="outline_variant">#4E4438</color>
+
+    <color name="board_bg">#5A3E28</color>
+</resources>
